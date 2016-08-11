@@ -60,6 +60,7 @@ Sandbox.init = function(id, cb) {
   this.miner = setInterval(this.mineBlock.bind(this, function() {}), 5000);
   this.logListeners = [];
   this.projectName = null;
+  this.timeAdjustment = 0;
 };
 Sandbox.getCoinbase = function() {
   return this.coinbase;
@@ -328,20 +329,21 @@ Sandbox.fastForward = util.synchronize(function(blocks, finalTimesamp, cb) {
   async.timesSeries(blocks, function(n, next) {
     if (n === (blocks-1)) {
       if (finalTimesamp) {
+        self.timeAdjustment = finalTimesamp - Date.now();
         self.mineBlockWithTimestamp(finalTimesamp, next);
       }
       else {
-        self.mineBlockWithTimestamp(Date.now(), next);
+        self.mineBlockWithTimestamp(Date.now() + self.timeAdjustment, next);
       } 
     } else {
-      self.mineBlockWithTimestamp(Date.now(), next);
+      self.mineBlockWithTimestamp(Date.now() + self.timeAdjustment, next);
     }
   }, function(err) {
     cb();
   });
 });
 Sandbox.mineBlock = util.synchronize(function(cb) {
-  return this.mineBlockWithTimestamp(Date.now(), cb);
+  return this.mineBlockWithTimestamp(Date.now() + this.timeAdjustment, cb);
 });
 Sandbox.mineBlockWithTimestamp = function(timestamp, cb) {
   if (this.miningBlock) return;
@@ -394,7 +396,7 @@ Sandbox.call = util.synchronize(function(options, cb) {
   }
 });
 Sandbox.createNextBlock = function(transactions, cb) {
-  return this.createNextBlockWithTimestamp(transactions, Date.now(), cb);
+  return this.createNextBlockWithTimestamp(transactions, Date.now() + this.timeAdjustment, cb);
 };
 Sandbox.createNextBlockWithTimestamp = function(transactions, timestamp, cb) {
   this.blockchain.getHead((function(err, lastBlock) {
