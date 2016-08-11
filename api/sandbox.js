@@ -168,6 +168,18 @@ module.exports = function(services) {
       handler: function(cb) {
         cb(null, sandbox.projectName);
       }
+    },
+    fastForward: {
+      args: [{
+        type: 'map',
+        values: {
+          blocks: { type: 'number', defaultVal: null },
+          finalTimestamp: { type: 'number', defaultVal: null },
+        }
+      }],
+      handler: function(options, cb) {
+        sandbox.fastForward(options.blocks.toNumber(), options.finalTimestamp && options.finalTimestamp.toNumber(), cb);
+      }
     }
   };
 };

@@ -107,6 +107,10 @@ util.nowHex = function() {
   return util.pad(Math.floor(Date.now() / 1000).toString(16));
 };
 
+util.timestampHex = function(timestamp) {
+  return util.pad(Math.floor(timestamp / 1000).toString(16));
+};
+
 util.toNumber = function(obj) {
   if (Buffer.isBuffer(obj)) return ethUtils.bufferToInt(obj);
   if (typeof obj === 'string' && _.startsWith(obj, '0x')) return parseInt(obj, 16);

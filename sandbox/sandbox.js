@@ -316,10 +316,37 @@ Sandbox.runPendingTx = function() {
     }).bind(this));
   }).bind(this));
 };
+Sandbox.fastForward = util.synchronize(function(blocks, finalTimesamp, cb) {
+  if (typeof finalTimesamp === 'function') {
+    cb = finalTimesamp;
+    finalTimesamp = null;
+  }
+  if (blocks <= 0) {
+    return cb();
+  }
+  var self = this;
+  async.timesSeries(blocks, function(n, next) {
+    if (n === (blocks-1)) {
+      if (finalTimesamp) {
+        self.mineBlockWithTimestamp(finalTimesamp, next);
+      }
+      else {
+        self.mineBlockWithTimestamp(Date.now(), next);
+      } 
+    } else {
+      self.mineBlockWithTimestamp(Date.now(), next);
+    }
+  }, function(err) {
+    cb();
+  });
+});
 Sandbox.mineBlock = util.synchronize(function(cb) {
+  return this.mineBlockWithTimestamp(Date.now(), cb);
+});
+Sandbox.mineBlockWithTimestamp = function(timestamp, cb) {
   if (this.miningBlock) return;
   this.miningBlock = true;
-  this.createNextBlock([], (function(err, block) {
+  this.createNextBlockWithTimestamp([], timestamp, (function(err, block) {
     if (err) {
       this.miningBlock = false;
       console.error(err);
@@ -333,7 +360,7 @@ Sandbox.mineBlock = util.synchronize(function(cb) {
       this.runPendingTx();
     }).bind(this));
   }).bind(this));
-});
+};
 Sandbox.call = util.synchronize(function(options, cb) {
   if (!this.accounts.hasOwnProperty(options.from))
     return cb('Could not find a private key for ' + options.from);
@@ -367,6 +394,9 @@ Sandbox.call = util.synchronize(function(options, cb) {
   }
 });
 Sandbox.createNextBlock = function(transactions, cb) {
+  return this.createNextBlockWithTimestamp(transactions, Date.now(), cb);
+};
+Sandbox.createNextBlockWithTimestamp = function(transactions, timestamp, cb) {
   this.blockchain.getHead((function(err, lastBlock) {
     if (err) return cb(err);
     var block = new Block({
@@ -374,7 +404,7 @@ Sandbox.createNextBlock = function(transactions, cb) {
         coinbase: util.toBuffer(this.coinbase),
         gasLimit: util.toBuffer(this.gasLimit),
         number: ethUtils.bufferToInt(lastBlock.header.number) + 1,
-        timestamp: new Buffer(util.nowHex(), 'hex'),
+        timestamp: new Buffer(util.timestampHex(timestamp), 'hex'),
         difficulty: util.toBuffer(this.difficulty),
         parentHash: lastBlock.hash()
       }, transactions: transactions || [],
